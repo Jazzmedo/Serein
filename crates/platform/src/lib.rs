@@ -5,6 +5,8 @@ pub mod audio;
 pub mod badge;
 pub mod captcha;
 pub mod compositor;
+#[cfg(target_os = "linux")]
+pub mod desktop_colors;
 pub mod game_activity;
 pub mod gsync;
 pub mod heic;

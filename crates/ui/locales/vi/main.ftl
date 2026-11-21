@@ -3578,6 +3578,10 @@ settings-appearance-settings-reset = Đặt lại
 settings-appearance-settings-restart-serein-after-changing-this-themes-can-customize-effects-while = Khởi động lại Serein sau khi thay đổi điều này. Chủ đề có thể tùy chỉnh hiệu ứng khi được bật.
 # Context: appearance_settings
 settings-appearance-settings-the-active-theme-brings-its-own-accent-it-takes-over = Chủ đề đang hoạt động mang lại điểm nhấn riêng; nó sẽ tiếp quản trong khi chủ đề đang được sử dụng.
+settings-desktop-colors = Màu màn hình nền
+settings-desktop-colors-use = Dùng màu của màn hình nền
+settings-desktop-colors-use-description = Theo màu nhấn của màn hình nền và bảng màu trong ~/.config/serein/theme.json, cập nhật ngay khi chúng thay đổi.
+settings-desktop-colors-accent-takes-over = Màu nhấn đang lấy từ màn hình nền; tắt Dùng màu của màn hình nền trong Chủ đề giao diện để tự chọn.
 # Context: appearance_settings
 settings-appearance-settings-theme = chủ đề
 # Context: appearance_settings

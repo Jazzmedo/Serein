@@ -1162,6 +1162,11 @@ struct Desktop {
 	ptt_chords: (bool, Vec<model::KeyChord>),
 	/// Linux desktop light/dark preference; winit reports it everywhere else.
 	system_theme: platform::system_theme::SystemTheme,
+	/// Linux desktop accent and theme-file colors, and what was last applied from them.
+	#[cfg(target_os = "linux")]
+	desktop_colors: platform::desktop_colors::DesktopColors,
+	#[cfg(target_os = "linux")]
+	desktop_colors_applied: Option<(Option<[u8; 3]>, u64)>,
 	tray_error: Option<&'static str>,
 	tray_window: tray_window::State,
 	/// Native menu bar, retitled whenever the interface language changes.
@@ -2596,6 +2601,11 @@ impl Desktop {
 			let ctx = cc.egui_ctx.clone();
 			move || ctx.request_repaint()
 		});
+		#[cfg(target_os = "linux")]
+		let desktop_colors = platform::desktop_colors::DesktopColors::watch(&runtime, {
+			let ctx = cc.egui_ctx.clone();
+			move || ctx.request_repaint()
+		});
 		let window = cc
 			.winit_window()
 			.ok_or("Native window unavailable")?
@@ -2742,6 +2752,10 @@ impl Desktop {
 			ptt_release: None,
 			ptt_chords: (true, Vec::new()),
 			system_theme,
+			#[cfg(target_os = "linux")]
+			desktop_colors,
+			#[cfg(target_os = "linux")]
+			desktop_colors_applied: None,
 			tray_error: None,
 			#[cfg(feature = "demo")]
 			demo_typing,
@@ -5909,6 +5923,25 @@ impl Desktop {
 			ui::design::apply(ctx);
 			ctx.request_repaint();
 		}
+		#[cfg(target_os = "linux")]
+		self.sync_desktop_colors(ctx);
+	}
+	/// Re-apply the design only when the desktop's accent or theme file changed, or the
+	/// Themes page switch flipped; off restores the stock colors at once.
+	#[cfg(target_os = "linux")]
+	fn sync_desktop_colors(&mut self, ctx: &egui::Context) {
+		let enabled = self.messaging.desktop_colors;
+		self.desktop_colors.set_enabled(enabled);
+		let (generation, file) = self.desktop_colors.file();
+		let wanted = enabled.then(|| (self.desktop_colors.accent(), generation));
+		if wanted == self.desktop_colors_applied {
+			return;
+		}
+		self.desktop_colors_applied = wanted;
+		ui::design::set_desktop_accent(wanted.and_then(|(accent, _)| accent));
+		ui::design::set_desktop_theme(file.as_deref().filter(|_| enabled));
+		ui::design::apply(ctx);
+		ctx.request_repaint();
 	}
 	/// Clip the finished frame to a rounded window shape for the custom Linux title bar.
 	#[cfg(target_os = "linux")]

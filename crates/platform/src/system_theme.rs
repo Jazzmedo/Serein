@@ -34,9 +34,9 @@ const DARK: u8 = 1;
 #[cfg(target_os = "linux")]
 const LIGHT: u8 = 2;
 #[cfg(target_os = "linux")]
-const PORTAL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+pub(crate) const PORTAL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
 #[cfg(target_os = "linux")]
-const COMMAND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+pub(crate) const COMMAND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 /// `gsettings get` prints one short quoted value; anything longer is not a theme name.
 #[cfg(any(target_os = "linux", all(test, unix)))]
 const MAX_OUTPUT: u64 = 256;
@@ -96,17 +96,8 @@ impl Drop for SystemTheme {
 /// so the caller can try another source.
 #[cfg(target_os = "linux")]
 async fn portal(publish: &impl Fn(bool)) -> bool {
-	use ashpd::desktop::settings::Settings;
 	use tokio::time::timeout;
-	let Ok(Ok(settings)) = timeout(PORTAL_TIMEOUT, async {
-		let connection = ashpd::zbus::connection::Builder::session()?
-			.max_queued(8)
-			.build()
-			.await?;
-		Settings::with_connection(connection).await
-	})
-	.await
-	else {
+	let Some(settings) = portal_settings().await else {
 		return false;
 	};
 	// Subscribe before reading so a change between the two is not lost.
@@ -128,14 +119,33 @@ async fn portal(publish: &impl Fn(bool)) -> bool {
 	.await
 }
 
+/// A bounded session-bus connection to the Settings portal, or `None` when none answers.
+#[cfg(target_os = "linux")]
+pub(crate) async fn portal_settings() -> Option<ashpd::desktop::settings::Settings> {
+	tokio::time::timeout(PORTAL_TIMEOUT, async {
+		let connection = ashpd::zbus::connection::Builder::session()?
+			.max_queued(8)
+			.build()
+			.await?;
+		ashpd::desktop::settings::Settings::with_connection(connection).await
+	})
+	.await
+	.ok()?
+	.ok()
+}
+
 // A queued signal can predate the initial read. Treat signals as invalidations
 // and read the current property rather than publishing possibly stale payloads.
 #[cfg(any(target_os = "linux", test))]
-async fn follow_theme_changes<S, R, F>(changes: S, mut read: R, publish: &impl Fn(bool)) -> bool
+pub(crate) async fn follow_theme_changes<S, R, F, T>(
+	changes: S,
+	mut read: R,
+	publish: &impl Fn(T),
+) -> bool
 where
 	S: futures_util::Stream,
 	R: FnMut() -> F,
-	F: std::future::Future<Output = Option<bool>>,
+	F: std::future::Future<Output = Option<T>>,
 {
 	use futures_util::StreamExt;
 	let Some(current) = read().await else {
@@ -155,7 +165,7 @@ where
 // One connection and one subscription at a time; reconnect after a closed stream
 // or unavailable portal, retaining the latest preference during the bounded delay.
 #[cfg(any(target_os = "linux", test))]
-async fn reconnect_portal<C, F, B, BF>(mut connect: C, mut fallback: B)
+pub(crate) async fn reconnect_portal<C, F, B, BF>(mut connect: C, mut fallback: B)
 where
 	C: FnMut() -> F,
 	F: std::future::Future<Output = bool>,
@@ -214,13 +224,13 @@ fn gnome_dark(scheme: Option<&str>, gtk_theme: Option<&str>) -> Option<bool> {
 }
 
 #[cfg(any(target_os = "linux", test))]
-fn unquote(output: &str) -> &str {
+pub(crate) fn unquote(output: &str) -> &str {
 	output.trim().trim_matches('\'')
 }
 
 /// Runs `command` and returns its stdout, or `None` on failure, excess output or `timeout`.
 #[cfg(any(target_os = "linux", all(test, unix)))]
-fn bounded_output(
+pub(crate) fn bounded_output(
 	command: &mut std::process::Command,
 	timeout: std::time::Duration,
 ) -> Option<String> {

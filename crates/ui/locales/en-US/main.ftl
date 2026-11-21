@@ -3566,6 +3566,10 @@ settings-appearance-settings-reset = Reset
 settings-appearance-settings-restart-serein-after-changing-this-themes-can-customize-effects-while = Restart Serein after changing this. Themes can customize effects while enabled.
 # Context: appearance_settings
 settings-appearance-settings-the-active-theme-brings-its-own-accent-it-takes-over = The active theme brings its own accent; it takes over while the theme is in use.
+settings-desktop-colors = Desktop colors
+settings-desktop-colors-use = Use desktop colors
+settings-desktop-colors-use-description = Follow your desktop's accent color and the palette in ~/.config/serein/theme.json, updating live as they change.
+settings-desktop-colors-accent-takes-over = Your desktop provides the accent; turn off Use desktop colors in Themes to pick your own.
 # Context: appearance_settings
 settings-appearance-settings-theme = Theme
 # Context: appearance_settings

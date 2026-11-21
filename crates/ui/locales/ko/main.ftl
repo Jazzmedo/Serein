@@ -3525,6 +3525,10 @@ settings-appearance-settings-reset = 초기화
 settings-appearance-settings-restart-serein-after-changing-this-themes-can-customize-effects-while = 변경 후 Serein을 다시 시작하세요. 테마가 활성화되어 있으면 효과를 사용자 지정할 수 있습니다.
 # Context: appearance_settings
 settings-appearance-settings-the-active-theme-brings-its-own-accent-it-takes-over = 활성 테마의 강조색이 테마를 사용하는 동안 적용됩니다.
+settings-desktop-colors = 데스크톱 색상
+settings-desktop-colors-use = 데스크톱 색상 사용
+settings-desktop-colors-use-description = 데스크톱의 강조색과 ~/.config/serein/theme.json의 팔레트를 따르며, 바뀌면 바로 반영됩니다.
+settings-desktop-colors-accent-takes-over = 데스크톱이 강조색을 제공합니다. 직접 고르려면 테마에서 데스크톱 색상 사용을 끄세요.
 # Context: appearance_settings
 settings-appearance-settings-theme = 테마
 # Context: appearance_settings

@@ -170,6 +170,39 @@ pub fn set_primary_color(primary: Option<[u8; 3]>) {
 		Ordering::Relaxed,
 	);
 }
+/// The Linux desktop's accent; while set it takes over from the primary color. Call [`apply`]
+/// afterwards.
+#[cfg(target_os = "linux")]
+pub fn set_desktop_accent(accent: Option<[u8; 3]>) {
+	DESKTOP_ACCENT.set(accent);
+}
+/// Install a desktop `theme.json`'s colors by palette field name. Unknown keys and unreadable
+/// colors are skipped, so one bad entry keeps the rest. Call [`apply`] afterwards.
+#[cfg(target_os = "linux")]
+pub fn set_desktop_theme(colors: Option<&std::collections::BTreeMap<String, String>>) {
+	DESKTOP_THEME.set(colors.map(|colors| {
+		THEME_FIELDS.map(|field| {
+			let [r, g, b, a] = extensions::parse_color(colors.get(field)?).ok()?;
+			Some(Color32::from_rgba_unmultiplied(r, g, b, a))
+		})
+	}));
+}
+/// Whether the desktop's accent or theme file currently decides the accent.
+#[cfg(target_os = "linux")]
+pub fn desktop_sets_accent() -> bool {
+	DESKTOP_ACCENT.get().is_some()
+		|| DESKTOP_THEME
+			.get()
+			.is_some_and(|colors| colors[ACCENT_FIELD].is_some())
+}
+/// The accent used where no theme brings one: the desktop's, then the user's primary color.
+fn chosen_accent() -> Option<[u8; 3]> {
+	#[cfg(target_os = "linux")]
+	if let Some(accent) = DESKTOP_ACCENT.get() {
+		return Some(accent);
+	}
+	primary_color()
+}
 /// Shared swatch and direct #RRGGBB input for app, profile and folder colors.
 pub fn color_edit(ui: &mut egui::Ui, color: &mut [u8; 3]) -> egui::Response {
 	let swatch = ui.color_edit_button_srgb(color);
@@ -387,7 +420,7 @@ pub fn builtin_colors(dark: bool, variant: Variant) -> Palette {
 		Variant::Verdant => gradient([0x2b6350, 0x081a15], 0x283934),
 		Variant::Afterglow => gradient([0xd9663c, 0x35205e], 0x5b3b40),
 	};
-	customize(palette, primary_color())
+	customize(palette, chosen_accent())
 }
 #[derive(Clone, Copy)]
 struct ExtensionPalette {
@@ -400,6 +433,11 @@ thread_local! {
 	static EXTENSION_STYLE: std::cell::Cell<extensions::ThemeStyle> = std::cell::Cell::new(extensions::ThemeStyle::default());
 	static WINDOW_EFFECTS: std::cell::Cell<(bool, u8, u8)> = const { std::cell::Cell::new((false, 15, 50)) };
 	static BACKGROUND_IMAGE: std::cell::RefCell<Option<(std::sync::Arc<egui::ColorImage>, egui::TextureHandle)>> = const { std::cell::RefCell::new(None) };
+}
+#[cfg(target_os = "linux")]
+thread_local! {
+	static DESKTOP_ACCENT: std::cell::Cell<Option<[u8; 3]>> = const { std::cell::Cell::new(None) };
+	static DESKTOP_THEME: std::cell::Cell<Option<[Option<Color32>; 18]>> = const { std::cell::Cell::new(None) };
 }
 
 /// Transparency always covers every surface: rail, sidebars, headers, chat and composer.
@@ -820,6 +858,11 @@ fn recolor(mut palette: Palette, theme: ExtensionPalette) -> Palette {
 }
 /// Index of `accent` in [`THEME_FIELDS`].
 const ACCENT_FIELD: usize = 11;
+/// Indexes of `sidebar` and `chat` in [`THEME_FIELDS`].
+#[cfg(target_os = "linux")]
+const SIDEBAR_FIELD: usize = 1;
+#[cfg(target_os = "linux")]
+const CHAT_FIELD: usize = 2;
 /// Whether the active community theme brings its own accent for this mode. Such a theme
 /// replaces the user's primary colour instead of being tinted by it.
 pub fn theme_sets_accent(dark: bool) -> bool {
@@ -836,10 +879,32 @@ fn resolved_colors(dark: bool, variant: Variant) -> Palette {
 		themed_accent = theme.colors[ACCENT_FIELD].is_some();
 		palette = recolor(palette, theme);
 	}
+	// The desktop's theme file layers over any community theme, and its accent outranks both.
+	#[cfg(target_os = "linux")]
+	if let Some(colors) = DESKTOP_THEME.get() {
+		themed_accent |= colors[ACCENT_FIELD].is_some();
+		let (canvas, surface) = (palette.canvas, palette.surface);
+		let backdrop = palette.backdrop;
+		palette = recolor(
+			palette,
+			ExtensionPalette {
+				colors,
+				backdrop,
+				background: None,
+			},
+		);
+		// Keep a stock canvas or surface unless the file recolors what they follow.
+		if colors[CHAT_FIELD].is_none() {
+			palette.canvas = canvas;
+		}
+		if colors[SIDEBAR_FIELD].is_none() {
+			palette.surface = surface;
+		}
+	}
 	if themed_accent {
 		palette
 	} else {
-		customize(palette, primary_color())
+		customize(palette, chosen_accent())
 	}
 }
 pub fn colors(dark: bool, variant: Variant) -> Palette {
@@ -903,8 +968,8 @@ pub(crate) fn theme_preview_palette(ui: &egui::Ui, theme: &extensions::Theme) ->
 		Some(overrides) if overrides.colors[ACCENT_FIELD].is_some() => {
 			opaque_surfaces(recolor(base, overrides))
 		}
-		Some(overrides) => opaque_surfaces(customize(recolor(base, overrides), primary_color())),
-		None => opaque_surfaces(customize(base, primary_color())),
+		Some(overrides) => opaque_surfaces(customize(recolor(base, overrides), chosen_accent())),
+		None => opaque_surfaces(customize(base, chosen_accent())),
 	}
 }
 pub fn palette(ui: &egui::Ui) -> Palette {
@@ -1992,6 +2057,53 @@ fn contrast(a: Color32, b: Color32) -> f32 {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[cfg(target_os = "linux")]
+	#[test]
+	fn desktop_colors_layer_over_the_theme_by_precedence() {
+		let variant = Variant::default();
+		let stock = resolved_colors(true, variant);
+		set_desktop_accent(Some([0xed, 0x5b, 0x00]));
+		let tinted = resolved_colors(true, variant);
+		assert_eq!(tinted.accent, rgb(0xed5b00));
+		assert_eq!(
+			(tinted.base, tinted.chat),
+			(stock.base, stock.chat),
+			"surfaces keep the theme"
+		);
+
+		let file = [
+			("accent", "#ff0000"),
+			("chat", "#101010"),
+			("text", "red"),
+			("bogus", "#000000"),
+		]
+		.map(|(k, v)| (k.to_owned(), v.to_owned()));
+		set_desktop_theme(Some(&file.into()));
+		let themed = resolved_colors(true, variant);
+		assert_eq!(
+			themed.accent,
+			rgb(0xff0000),
+			"the file's accent outranks the desktop accent"
+		);
+		assert_eq!((themed.chat, themed.canvas), (rgb(0x101010), rgb(0x101010)));
+		assert_eq!(
+			themed.text, stock.text,
+			"an unreadable color keeps the theme's"
+		);
+		assert_eq!(
+			themed.surface, stock.surface,
+			"an unset field keeps the theme's"
+		);
+
+		set_desktop_theme(None);
+		set_desktop_accent(None);
+		assert_eq!(
+			resolved_colors(true, variant),
+			stock,
+			"off restores the stock theme"
+		);
+	}
 
 	#[test]
 	fn role_name_color_keeps_hue_while_meeting_contrast() {

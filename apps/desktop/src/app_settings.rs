@@ -67,6 +67,7 @@ impl Settings {
 			steady_refresh_rate: ui.steady_refresh_rate,
 			steady_refresh_prompted: ui.steady_refresh_prompted,
 			primary_color: ui.primary_color,
+			desktop_colors: ui.desktop_colors,
 			transparency_blur: ui.transparency_blur,
 			transparency: ui.transparency,
 			blur: ui.blur,
@@ -125,6 +126,7 @@ impl Settings {
 		// Like setup below: unreadable preferences must not ask again on every launch.
 		ui.steady_refresh_prompted = !self.loaded || value.steady_refresh_prompted;
 		ui.primary_color = value.primary_color;
+		ui.desktop_colors = value.desktop_colors;
 		ui.transparency_blur = value.transparency_blur;
 		ui.transparency = value.transparency;
 		ui.blur = value.blur;
@@ -667,6 +669,7 @@ mod tests {
 		ui.preload_on_hover = defaults.preload_on_hover;
 		ui.auto_idle = defaults.auto_idle;
 		ui.custom_title_bar = defaults.custom_title_bar;
+		ui.desktop_colors = defaults.desktop_colors;
 		ui.setup_pending = !defaults.setup_done;
 		settings.observe(&ui);
 		assert!(

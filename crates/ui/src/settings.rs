@@ -543,6 +543,23 @@ impl MessagingUi {
 										self.global_keybind_status,
 									),
 									Page::Extensions | Page::Themes => {
+										#[cfg(target_os = "linux")]
+										if self.settings.page == Page::Themes {
+											design::group(
+												ui,
+												&crate::i18n::translate("settings-desktop-colors"),
+												|ui| {
+													design::switch(
+														ui,
+														"settings-desktop-colors-use",
+														Some(
+															"settings-desktop-colors-use-description",
+														),
+														&mut self.desktop_colors,
+													);
+												},
+											);
+										}
 										self.extensions
 											.select_themes(self.settings.page == Page::Themes);
 										self.extensions.settings(ui, state);
@@ -1143,16 +1160,22 @@ impl MessagingUi {
 	/// Primary colour picker with its reset; shared by Settings > Appearance and setup.
 	pub(crate) fn primary_color_row(&mut self, ui: &mut egui::Ui) {
 		let themed_accent = design::theme_sets_accent(ui.visuals().dark_mode);
+		#[cfg(target_os = "linux")]
+		let desktop_accent = self.desktop_colors && design::desktop_sets_accent();
+		#[cfg(not(target_os = "linux"))]
+		let desktop_accent = false;
 		design::row(
 			ui,
 			"settings-appearance-settings-primary-color",
 			Some(if themed_accent {
 				"settings-appearance-settings-the-active-theme-brings-its-own-accent-it-takes-over"
+			} else if desktop_accent {
+				"settings-desktop-colors-accent-takes-over"
 			} else {
 				"settings-appearance-settings-used-for-buttons-selection-and-message-highlights"
 			}),
 			|ui| {
-				ui.add_enabled_ui(!themed_accent, |ui| {
+				ui.add_enabled_ui(!themed_accent && !desktop_accent, |ui| {
 					if self.primary_color.is_some()
 						&& design::text_action(
 							ui,

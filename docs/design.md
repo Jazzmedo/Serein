@@ -32,6 +32,25 @@ builds (`onyx`, `ash`, `midnight-blurple`, `crimson-moon`, `forest`, `sunset`) s
 their renamed presets, so a stored preference survives the rename. `--demo --demo-theme=<key>` and
 `--demo-light` open fixtures in a preset for screenshots.
 
+Linux builds add **Settings ▸ Themes ▸ Use desktop colors** (on by default, device-local; the
+code is compiled only for Linux). On, Serein follows the desktop live, with no restart:
+
+- The desktop accent replaces the primary color (on-accent text and mention tints are derived as
+  for a custom primary color; the primary-color row is disabled while the desktop owns it).
+- A theme file, `$XDG_CONFIG_HOME/serein/theme.json` (`~/.config/serein/theme.json`), is a flat
+  JSON object of `Palette` field names — `base`, `sidebar`, `chat`, `raised`, `hover`, `selected`,
+  `border`, `text_strong`, `text`, `muted`, `link`, `accent`, `accent_text`, `positive`,
+  `warning`, `danger`, `mention_bg`, `mention_text` — to `#rrggbb`/`#rrggbbaa` strings. Desktop
+  palette tools (matugen, Noctalia, Caelestia, pywal templates) rewrite it; Serein polls it every
+  2 s. It layers over the preset and any community theme; missing keys, unknown keys and
+  unreadable values keep the theme's color. A malformed file keeps the last good colors, a
+  failed read is retried, a file over 256 KiB is ignored and removing the file restores the
+  theme. `SEREIN_THEME_FILE` points at another file; debug builds follow only that variable.
+- Accent precedence: theme-file `accent` > community theme accent > desktop accent > primary color.
+
+Off, the stock theme applies at once and the desktop's files are no longer read. Accent sources
+are listed under [Linux system appearance](platform-support.md#linux-system-appearance).
+
 Message cards use a thin tint only on the conversation surface when chat is translucent.
 Search previews, profile code blocks, component modals and opaque component containers keep
 their normal card/code fills. Pending upload cards and their preview wells retain their

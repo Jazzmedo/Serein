@@ -66,6 +66,8 @@ pub struct AppPreferences {
 	/// On by default, including for saved preferences from before the setting existed.
 	pub custom_title_bar: bool,
 	pub primary_color: Option<[u8; 3]>,
+	/// Linux: follow the desktop's accent and theme file; on by default, older files included.
+	pub desktop_colors: bool,
 	pub transparency_blur: bool,
 	pub transparency: u8,
 	pub blur: u8,
@@ -132,6 +134,7 @@ impl Default for AppPreferences {
 			hide_window_decorations: false,
 			custom_title_bar: true,
 			primary_color: None,
+			desktop_colors: true,
 			transparency_blur: false,
 			transparency: 15,
 			blur: 50,
@@ -2410,6 +2413,10 @@ mod tests {
 		assert!(
 			legacy.auto_idle,
 			"older preferences enable Go idle when away"
+		);
+		assert!(
+			legacy.desktop_colors,
+			"older preferences follow the desktop colors"
 		);
 		for (key, format) in [
 			("12-hour", model::TimeFormat::TwelveHour),

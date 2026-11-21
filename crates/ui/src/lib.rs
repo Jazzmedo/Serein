@@ -653,6 +653,8 @@ pub struct MessagingUi {
 	/// Set when the user picks a theme preset; the host persists it.
 	pub theme_variant_changed: Option<design::Variant>,
 	pub primary_color: Option<[u8; 3]>,
+	/// Linux: follow the desktop's accent and `theme.json` colors (Settings > Themes).
+	pub desktop_colors: bool,
 	pub transparency_blur: bool,
 	pub transparency: u8,
 	pub blur: u8,

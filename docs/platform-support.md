@@ -153,6 +153,16 @@ selects Dark; no preference selects Light. If detection fails entirely, the
 existing Dark fallback remains. Windows/macOS retain winit's system theme events.
 Real Linux desktop/portal rendering is unverified in this macOS repair session.
 
+With Settings ▸ Themes ▸ Use desktop colors on, the desktop accent is read the same way from the
+portal's `org.freedesktop.appearance accent-color` (documented in the Settings portal spec;
+GNOME 47+ and Plasma 6 signal changes; out-of-range channels mean unset). While the portal has
+no accent, these unofficial sources are polled every 2 s instead: GNOME's named accent through
+`gsettings` (only when `XDG_CURRENT_DESKTOP` contains GNOME, since gsettings elsewhere reports
+GNOME's default blue), KDE `kdeglobals` `[General] AccentColor` then
+`[Colors:View] SelectionBackground`, and pywal's `~/.cache/wal/colors.json` `color4`. Files are
+read with a 256 KiB bound and the gsettings query keeps the limits above. Verified only with
+synthetic files and unit tests; live GNOME/KDE/Hyprland accent changes are unverified.
+
 ## Go idle when away
 
 The Notifications setting shows Idle after the account's inactivity timeout
